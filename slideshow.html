@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>大電視輪播系統</title>
+    <style>
+        /* 設定全螢幕無邊界，並將背景設為黑色，切換時視覺比較舒服 */
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            width: 100vw;
+            height: 100vh; 
+            background-color: #000; 
+            overflow: hidden; 
+        }
+        iframe { 
+            width: 100%; 
+            height: 100%; 
+            border: none; 
+        }
+    </style>
+</head>
+<body>
+
+<!-- allow="autoplay; fullscreen" 是讓 YouTube 能自動播放與支援全螢幕的關鍵 -->
+<iframe id="displayFrame" allow="autoplay; fullscreen" allowfullscreen></iframe>
+
+<script>
+    // 您的三個網址 (YouTube 已經替換為 embed 格式並加上 autoplay=1)
+    const urls = [
+        "https://257170-ship-it.github.io/school-piggy/",
+        "https://257170-ship-it.github.io/100-Book/",
+        "https://www.youtube.com/embed/qPMXMiphg0c?autoplay=1"
+    ];
+    
+    const displayFrame = document.getElementById("displayFrame");
+    let currentIndex = 0;
+    
+    // 設定停留時間：30 分鐘 = 30 * 60 * 1000 毫秒 = 1,800,000 毫秒
+    // (如果您想要先測試看效果，可以暫時改成 5000 也就是 5 秒)
+    const timeInterval = 30 * 60 * 1000; 
+
+    // 初始化：網頁一打開就載入第一個網址
+    displayFrame.src = urls[currentIndex];
+
+    // 開始定時輪播
+    setInterval(() => {
+        currentIndex = (currentIndex + 1) % urls.length;
+        displayFrame.src = urls[currentIndex];
+    }, timeInterval);
+</script>
+
+</body>
+</html>
