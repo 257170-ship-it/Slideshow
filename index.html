@@ -26,8 +26,9 @@
 <iframe id="displayFrame" allow="autoplay; fullscreen" allowfullscreen></iframe>
 
 <script>
-    // 您的三個網址 (YouTube 已經替換為 embed 格式並加上 autoplay=1)
+    // 您的三個網址 (包含您提供的閱讀之星網址與 YouTube 影片)
     const urls = [
+        "https://257170-ship-it.github.io/readingstar/",
         "https://257170-ship-it.github.io/school-piggy/",
         "https://257170-ship-it.github.io/100-Book/",
         "https://www.youtube.com/embed/qPMXMiphg0c?autoplay=1"
@@ -37,6 +38,7 @@
     let currentIndex = 0;
     
     // 設定停留時間：30 分鐘 = 30 * 60 * 1000 毫秒 = 1800000 毫秒
+    // 若要測試，可將此數值改小（例如 5000 代表 5 秒）
     const timeInterval = 30 * 60 * 1000; 
 
     // 初始化：網頁一打開就載入第一個網址
