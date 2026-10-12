@@ -2,53 +2,155 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>大電視輪播系統</title>
     <style>
-        /* 設定全螢幕無邊界，並將背景設為黑色，切換時視覺比較舒服 */
-        body, html { 
-            margin: 0; 
-            padding: 0; 
-            width: 100vw;
-            height: 100vh; 
-            background-color: #000; 
-            overflow: hidden; 
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            overflow: hidden;
         }
-        iframe { 
-            width: 100%; 
-            height: 100%; 
-            border: none; 
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
         }
+
+        /* 底部感應區：滑鼠移入或觸控點擊時，浮出選單 */
+        #hotzone {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 70px;
+            z-index: 999;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+        }
+        #bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 14px;
+            padding: 10px 16px;
+            background: rgba(0, 0, 0, 0.75);
+            border-radius: 14px;
+            transform: translateY(150%);
+            opacity: 0;
+            transition: transform 0.25s ease, opacity 0.25s ease;
+            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+        }
+        #hotzone:hover #bar,
+        #hotzone.show #bar {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        #bar button {
+            border: none;
+            padding: 10px 18px;
+            font-size: 18px;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        #bar button:hover { background: rgba(255, 255, 255, 0.3); }
+        #bar button.active { background: #2e86ff; }
+
+        /* 常駐的小選單按鈕（右下角） */
+        #handle {
+            position: fixed;
+            right: 14px;
+            bottom: 14px;
+            z-index: 1000;
+            border: none;
+            padding: 8px 14px;
+            font-size: 16px;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.55);
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+        }
+        #handle:hover { background: rgba(0, 0, 0, 0.85); }
     </style>
 </head>
 <body>
 
-<!-- allow="autoplay; fullscreen" 是讓 YouTube 能自動播放與支援全螢幕的關鍵 -->
 <iframe id="displayFrame" allow="autoplay; fullscreen" allowfullscreen></iframe>
 
+<div id="hotzone">
+    <div id="bar"></div>
+</div>
+<button id="handle">☰ 選單</button>
+
 <script>
-    // 您的三個網址 (包含您提供的閱讀之星網址與 YouTube 影片)
-    const urls = [
-        "https://257170-ship-it.github.io/readingstar/",
-        "https://257170-ship-it.github.io/school-piggy/",
-        "https://257170-ship-it.github.io/100-Book/",
-        "https://www.youtube.com/embed/qPMXMiphg0c?autoplay=1"
+    // 名稱 + 網址（想改按鈕文字，改 name 即可）
+    const pages = [
+        { name: "閱讀之星", url: "https://257170-ship-it.github.io/readingstar/" },
+        { name: "校園存錢筒", url: "https://257170-ship-it.github.io/school-piggy/" },
+        { name: "百本閱讀", url: "https://257170-ship-it.github.io/100-Book/" },
+        { name: "影片", url: "https://www.youtube.com/embed/qPMXMiphg0c?autoplay=1" }
     ];
-    
+
+    // 停留時間：30 分鐘（測試時可改成 5000 = 5 秒）
+    const timeInterval = 30 * 60 * 1000;
+
     const displayFrame = document.getElementById("displayFrame");
+    const hotzone = document.getElementById("hotzone");
+    const bar = document.getElementById("bar");
     let currentIndex = 0;
-    
-    // 設定停留時間：30 分鐘 = 30 * 60 * 1000 毫秒 = 1800000 毫秒
-    // 若要測試，可將此數值改小（例如 5000 代表 5 秒）
-    const timeInterval = 30 * 60 * 1000; 
+    let timer = null;
+    let hideTimer = null;
 
-    // 初始化：網頁一打開就載入第一個網址
-    displayFrame.src = urls[currentIndex];
+    // 建立按鈕
+    const prevBtn = makeButton("◀ 上一頁", () => go(currentIndex - 1));
+    const nextBtn = makeButton("下一頁 ▶", () => go(currentIndex + 1));
+    const pageBtns = pages.map((p, i) => makeButton(p.name, () => go(i)));
 
-    // 開始定時輪播
-    setInterval(() => {
-        currentIndex = (currentIndex + 1) % urls.length;
-        displayFrame.src = urls[currentIndex];
-    }, timeInterval);
+    bar.appendChild(prevBtn);
+    pageBtns.forEach(b => bar.appendChild(b));
+    bar.appendChild(nextBtn);
+
+    function makeButton(text, onClick) {
+        const b = document.createElement("button");
+        b.textContent = text;
+        b.addEventListener("click", onClick);
+        return b;
+    }
+
+    // 切換到指定頁面，並重新計時
+    function go(index) {
+        currentIndex = (index + pages.length) % pages.length;
+        displayFrame.src = pages[currentIndex].url;
+        pageBtns.forEach((b, i) => b.classList.toggle("active", i === currentIndex));
+        restartTimer();
+    }
+
+    function restartTimer() {
+        clearInterval(timer);
+        timer = setInterval(() => go(currentIndex + 1), timeInterval);
+    }
+
+    // 觸控螢幕：點底部感應區顯示選單，5 秒後自動收起
+    hotzone.addEventListener("touchstart", () => {
+        hotzone.classList.add("show");
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(() => hotzone.classList.remove("show"), 5000);
+    });
+
+    // 鍵盤左右鍵切換
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowLeft") go(currentIndex - 1);
+        if (e.key === "ArrowRight") go(currentIndex + 1);
+    });
+
+    // 初始化
+    go(0);
 </script>
 
 </body>
