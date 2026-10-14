@@ -19,6 +19,14 @@
             border: none;
         }
 
+        #ytWrap {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #000;
+        }
+        #ytWrap iframe { width: 100%; height: 100%; }
+
         /* 底部感應區：滑鼠移入或觸控點擊時，浮出選單 */
         #hotzone {
             position: fixed;
@@ -82,6 +90,7 @@
 <body>
 
 <iframe id="displayFrame" allow="autoplay; fullscreen" allowfullscreen></iframe>
+<div id="ytWrap"><div id="ytPlayer"></div></div>
 
 <div id="hotzone">
     <div id="bar"></div>
@@ -94,7 +103,7 @@
         { name: "閱讀之星", url: "https://257170-ship-it.github.io/readingstar/" },
         { name: "校園存錢筒", url: "https://257170-ship-it.github.io/school-piggy/" },
         { name: "百本閱讀", url: "https://257170-ship-it.github.io/100-Book/" },
-        { name: "影片", url: "https://www.youtube.com/embed/qPMXMiphg0c?autoplay=1" }
+        { name: "影片", playlist: "PLLshOS_H94JI" }   // YouTube 播放清單 ID（list= 後面那串）
     ];
 
     // 停留時間：30 分鐘（測試時可改成 5000 = 5 秒）
@@ -123,10 +132,65 @@
         return b;
     }
 
+    // ===== YouTube 播放清單（用官方 IFrame API，確保自動播放）=====
+    const ytWrap = document.getElementById("ytWrap");
+    let ytPlayer = null;
+    let ytReady = false;
+    let pendingPlaylist = null;
+
+    const apiTag = document.createElement("script");
+    apiTag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(apiTag);
+
+    window.onYouTubeIframeAPIReady = () => {
+        ytPlayer = new YT.Player("ytPlayer", {
+            width: "100%",
+            height: "100%",
+            playerVars: { playsinline: 1, rel: 0 },
+            events: {
+                onReady: () => {
+                    ytReady = true;
+                    if (pendingPlaylist) startPlaylist(pendingPlaylist);
+                },
+                // 自動播放被擋：靜音後再試一次
+                onAutoplayBlocked: () => { ytPlayer.mute(); ytPlayer.playVideo(); },
+                onStateChange: (e) => {
+                    if (e.data === YT.PlayerState.UNSTARTED && ytWrap.style.display === "block") {
+                        ytPlayer.mute();
+                        ytPlayer.playVideo();
+                    }
+                },
+                // 影片不能嵌入或已刪除：自動跳下一支
+                onError: () => { ytPlayer.nextVideo(); }
+            }
+        });
+    };
+
+    function startPlaylist(id) {
+        pendingPlaylist = null;
+        ytPlayer.mute();   // 靜音才能保證自動播放；要聲音請見說明
+        ytPlayer.loadPlaylist({ listType: "playlist", list: id, index: 0 });
+        ytPlayer.setLoop(true);
+    }
+
+    function showPage(page) {
+        if (page.playlist) {
+            displayFrame.src = "about:blank";
+            ytWrap.style.display = "block";
+            if (ytReady) startPlaylist(page.playlist);
+            else pendingPlaylist = page.playlist;
+        } else {
+            pendingPlaylist = null;
+            if (ytReady) ytPlayer.stopVideo();
+            ytWrap.style.display = "none";
+            displayFrame.src = page.url;
+        }
+    }
+
     // 切換到指定頁面，並重新計時
     function go(index) {
         currentIndex = (index + pages.length) % pages.length;
-        displayFrame.src = pages[currentIndex].url;
+        showPage(pages[currentIndex]);
         pageBtns.forEach((b, i) => b.classList.toggle("active", i === currentIndex));
         restartTimer();
     }
